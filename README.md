@@ -1,7 +1,8 @@
 # 🚀 Pipeline ETL Emisión SCTR - Polars con DuckDB
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![VS Code](https://img.shields.io/badge/VS%20Code-Databricks%20Connect-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://code.visualstudio.com/)
+[![Polars](https://img.shields.io/badge/Polars-1.36.1-3776AB?style=for-the-badge&logo=polars&logoColor=white)](https://www.python.org/)
+[![DuckDB](https://img.shields.io/badge/DuckDB-1.4.3-3776AB?style=for-the-badge&logo=duckdb&logoColor=white)](https://www.python.org/)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
 Este proyecto implementa una arquitectura **ETL (Extract, Transform, Load)** moderna para el procesamiento masivo de archivos Excel de pólizas SCTR. 
@@ -20,7 +21,7 @@ Este proyecto implementa una arquitectura **ETL (Extract, Transform, Load)** mod
 ## 🛠️ Requisitos Previos
 
 * **Sistema Operativo:** Windows 10/11 (Probado), macOS o Linux.
-* **Python:** Versión `3.11` requerida (Gestionado con `uv`).
+* **Python:** Versión `>=3.11` requerida (Gestionado con `uv`).
 
 ---
 
