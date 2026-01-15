@@ -44,7 +44,7 @@ uv sync
 # En caso no tenga instalado uv
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-#O instalar desde PyPI
+# O instalar desde PyPI
 pipx install uv
 pip install uv
 
