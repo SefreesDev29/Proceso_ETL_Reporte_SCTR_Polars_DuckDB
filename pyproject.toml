@@ -1,0 +1,23 @@
+[project]
+name = "proceso-etl-reporte-emision_sctr"
+version = "0.2.0"
+description = "Consolidar archivos Excels del ramo SCTR en parquet para tablero BI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "delta-spark>=4.0.0",
+    "duckdb>=1.4.3",
+    "fastexcel>=0.18.0",
+    "loguru>=0.7.3",
+    "pandas>=2.3.3",
+    "polars>=1.36.1",
+    "pyarrow>=22.0.0",
+    "pyspark==4.0.1",
+    "rich>=14.2.0",
+    "xlsxwriter>=3.2.9",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.17.0",
+]
