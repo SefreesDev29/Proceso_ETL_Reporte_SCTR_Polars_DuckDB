@@ -4,7 +4,7 @@ from loguru import logger
 from rich import print
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt
+from rich.prompt import IntPrompt
 from rich.text import Text
 import fastexcel
 from xlsxwriter import Workbook
@@ -193,6 +193,13 @@ def export_lf_excel(lf: pl.LazyFrame, path_file: str, sheet_name: str):
                         autofit=True
                 )
                 x+=1
+
+class MenuPrompt(IntPrompt):
+    validate_error_message = "[red]⛔ Error:[/red] Por favor ingrese un número válido."
+    
+    illegal_choice_message = (
+        "[red]⛔ Error:[/red] Por favor seleccione una de las opciones disponibles."
+    )
 
 class Process_ETL:
     def __init__(self, process_type: str):
@@ -600,7 +607,11 @@ if __name__=='__main__':
         "[cyan]3.[/] Cargar Ambas Bases (Expuestos/Contratantes)\n"
     )
     console.print(Panel.fit(menu_text, title="[bold]Menú de Procesos[/bold]", border_style="grey50"))
-    process_type = Prompt.ask("[bold white]Escriba el Nro de opción[/bold white]")
+    
+    process_type = MenuPrompt.ask(
+        "[bold white]Escriba el Nro de opción[/bold white]", 
+        choices=["1", "2", "3"]
+    )
 
     Process_ETL(process_type)
 

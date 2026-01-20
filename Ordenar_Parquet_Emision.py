@@ -102,7 +102,7 @@ logger.info(f'Abriendo Conexión a DuckDB...')
 con = duckdb.connect()
 
 logger.info(f'Configurando límite de Ram...')
-con.execute("SET memory_limit='18GB';")
+con.execute("SET memory_limit='24GB';")
 
 # logger.info(f'Configurando Directorio Temporal...')
 # temp_path = base_path / "DuckDB_Temp_Spill"
