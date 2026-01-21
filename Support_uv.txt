@@ -1,0 +1,64 @@
+python -m pip install --user pipx
+python -m pipx ensurepath
+pipx uninstall --all
+https://pipx.pypa.io/stable/installation/
+C:\Users\sebespi0\pipx -> Eliminar en caso de problemas y volver a instalar pipx
+
+uv venv
+uv init
+uv add charset_normalizer --trusted-host pypi.org --trusted-host files.pythonhosted.org --trusted-host pypi.python.org
+uv add --dev pyinstaller
+uv add --group dev pyinstaller
+uv add pandas --optional plot excel -> sin probar
+uv add -r requirements.txt
+uv pip list
+uv remove polars
+uv remove polars --group
+uv sync -> Funciona
+uv sync --extra foo
+uv sync --all-extras
+uv sync --group dev
+uv sync --no-dev
+uv sync --no-group dev
+uv pip install -e . -> sin probar
+uv pip install -r pyproject.toml
+uv pip install -r requirements.txt
+uv pip compile pyproject.toml -o requirements.txt 
+uv pip compile pyproject.toml --group dev -o requirements.txt  -> Funciona
+uv export -o requirements.txt
+uv export --no-group dev -o requirements.txt
+uv run Carga_Reportes_Emision_BK.py
+uv tool run ruff check Carga_Reportes_Emision_BK.py -> sin probar
+uvx ruff check Carga_Reportes_Emision_BK.py -> sin probar
+uv run pyinstaller --noconfirm --onefile Carga_Reportes_Emision_V2.py --icon "Recursos/logo.ico"
+uv python list --only-installed 
+uv add 'requests; sys_platform="linux"' -> sin probar
+
+
+Pasos para Upgrade:
+Eliminar entorno virtual .venv
+uv cache clean
+uv python pin 3.12.x
+uv sync --upgrade
+uv python list
+uv python install 3.12.x
+uv python find 3.12.x
+uv python uninstall 3.11.x
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+where.exe uv
+uv --version
+uv tool upgrade ruff
+uv tool upgrade --all
+uv self update
+
+set UV_NATIVE_TLS=true
+[tool.uv]
+allow-insecure-host = [
+  "pypi.org",
+  "files.pythonhosted.org",
+  "pypi.python.org",
+  "github.com",             
+  "objects.githubusercontent.com" 
+]
+
+uv tool install ruff --allow-insecure-host pypi.org --allow-insecure-host files.pythonhosted.org --allow-insecure-host pypi.python.org

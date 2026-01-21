@@ -229,7 +229,7 @@ class Process_ETL:
                 try:
                     sheet = reader.load_sheet_by_name(name,use_columns=columns_index_original,dtypes=dtypes_map)
                     q = sheet.to_polars().lazy()
-                except Exception as e:
+                except Exception:
                     logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}")
                     continue
                 # q = q.select(pl.all().gather(columns_index_original))
@@ -250,7 +250,6 @@ class Process_ETL:
                 )
                     
                 lf_final.append(q)
-                q.clear()
             
             lf: pl.LazyFrame = pl.concat(lf_final)
             n_rows = lf.limit(1).collect(engine='streaming').height
@@ -448,7 +447,6 @@ class Process_ETL:
             row_group_size = 1 * 1_000_000,
             statistics = True
         )
-        q.clear()
 
         logger.info(f'Guardando archivo final {process_name}...')
         if os.path.exists(path_prev):
@@ -515,7 +513,7 @@ class Process_ETL:
                 lf_final_list_exp = pl.concat(processing_subfolders('Expuestos',subfolders_list))
                 # print(lf_final_list)
 
-                logger.info(f'Consolidando información Expuestos...')
+                logger.info('Consolidando información Expuestos...')
                 self.Export_Final_Report('Expuestos', lf_final_list_exp, REPORT_NAME_EXP)
             
             lf_final_list_cont = pl.LazyFrame()
@@ -528,7 +526,7 @@ class Process_ETL:
                 lf_final_list_cont = pl.concat(processing_subfolders('Contratantes',subfolders_list))
                 # print(lf_final_list)
 
-                logger.info(f'Consolidando información Contratantes...')
+                logger.info('Consolidando información Contratantes...')
                 self.Export_Final_Report('Contratantes', lf_final_list_cont, REPORT_NAME_CONT)
             
             logger.info('Generando Reporte_BI Final...')
@@ -570,7 +568,7 @@ class Process_ETL:
             add_log_console()
             print(f'[dark_orange]Tiempo de proceso: {difference_formated}[/dark_orange]')
 
-            console.rule(f"[grey66]Proceso Finalizado[/grey66]")
+            console.rule("[grey66]Proceso Finalizado[/grey66]")
             print("[grey66]Presiona Enter para salir[/grey66]")
             input()
             sys.exit(0)
