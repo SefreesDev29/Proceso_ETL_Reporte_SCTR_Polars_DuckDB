@@ -21,3 +21,7 @@ dependencies = [
 dev = [
     "pyinstaller>=6.17.0",
 ]
+
+[tool.ruff]
+lint.ignore = ["E401"]
+line-length = 120

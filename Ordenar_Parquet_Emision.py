@@ -91,17 +91,17 @@ input_str_b = input_files_b.as_posix()
 output_str = output_folder.as_posix()
 
 console = Console()
-console.rule(f"[grey66]Proceso Iniciado: [bold white]Ordenar Consolidado de Emisión[/bold white][/grey66]")
+console.rule("[grey66]Proceso Iniciado: [bold white]Ordenar Consolidado de Emisión[/bold white][/grey66]")
 
 HORA_INICIAL = datetime.datetime.now()
 start_log()
 logger.info('Comienzo del Proceso Ordenar Consolidado...')
 start_log()
 
-logger.info(f'Abriendo Conexión a DuckDB...')
+logger.info('Abriendo Conexión a DuckDB...')
 con = duckdb.connect()
 
-logger.info(f'Configurando límite de Ram...')
+logger.info('Configurando límite de Ram...')
 con.execute("SET memory_limit='24GB';")
 
 # logger.info(f'Configurando Directorio Temporal...')
@@ -147,7 +147,7 @@ add_log_file()
 logger.info(f'Tiempo de proceso: {difference_formated}')
 add_log_console()
 print(f'[dark_orange]Tiempo de proceso: {difference_formated}[/dark_orange]')
-console.rule(f"[grey66]Proceso Finalizado[/grey66]")
+console.rule("[grey66]Proceso Finalizado[/grey66]")
 logger.complete()
 
 print("[grey66]Presiona Enter para salir...[/grey66]")

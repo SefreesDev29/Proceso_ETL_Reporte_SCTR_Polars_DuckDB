@@ -117,7 +117,7 @@ def start_log(exits_log: bool = False):
     add_log_file(exits_log)
 
 start_log()
-logger.info(f'Configurando entorno local...')
+logger.info('Configurando entorno local...')
 
 spark = (
     SparkSession.builder 
@@ -173,7 +173,7 @@ def save_to_delta(df: DataFrame, layer: str, table_name: str, mode="overwrite"):
     
 def save_to_parquet(df: DataFrame, layer: str, name_file: str):
     try:
-        logger.info(f"   ⏳ Preparando datos del origen...")
+        logger.info("   ⏳ Preparando datos del origen...")
         df.persist()
 
         total_rows = df.count()
@@ -193,7 +193,7 @@ def save_to_parquet(df: DataFrame, layer: str, name_file: str):
             # df_sorted = df.orderBy(F.asc("ULT_DIGI_DOC"), F.asc("NUM_DOC"))
             # df_sorted = df.orderBy(["ULT_DIGI_DOC", "NUM_DOC"], ascending=[True, True])
 
-        logger.info(f"   📦 Exportando archivo único Parquet...")
+        logger.info("   📦 Exportando archivo único Parquet...")
         (df.coalesce(1)
            .write
            .mode("overwrite")
@@ -312,7 +312,7 @@ def transform_expuestos_silver(periodo = PERIODO, get_only_bronze : bool = False
         
         total_rows = df.count()
         if total_rows == 0: 
-            logger.warning(f"   ⚠️ La tabla Bronze Expuestos no contiene registros.")
+            logger.warning("   ⚠️ La tabla Bronze Expuestos no contiene registros.")
             raise
         
         if get_only_bronze:
@@ -320,7 +320,7 @@ def transform_expuestos_silver(periodo = PERIODO, get_only_bronze : bool = False
         
         date_formats = ["yyyy-MM-dd", "dd/MM/yyyy", "dd-MM-yyyy", "yyyy/MM/dd", "yyyyMMdd", "dd/MM/yy"]
 
-        logger.info(f"   🔄 Transformando Bronze Expuestos...")
+        logger.info("   🔄 Transformando Bronze Expuestos...")
         
         def try_parse_dates(col_name):
             return F.coalesce(*[F.to_date(F.substring(F.col(col_name), 1, 10), fmt) for fmt in date_formats])
@@ -415,13 +415,13 @@ def transform_contratantes_silver(periodo = PERIODO, get_only_bronze : bool = Fa
         
         total_rows = df.count()
         if total_rows == 0: 
-            logger.warning(f"   ⚠️ La tabla Bronze Contratantes no contiene registros.")
+            logger.warning("   ⚠️ La tabla Bronze Contratantes no contiene registros.")
             raise
         
         if get_only_bronze:
             return df
         
-        logger.info(f"   🔄 Transformando Bronze Contratantes...")
+        logger.info("   🔄 Transformando Bronze Contratantes...")
 
         df_clean = (
             df 
@@ -493,21 +493,21 @@ def process_silver(df: DataFrame|None, table_name: str, unique_keys: list):
 
 def process_gold_consolidation() -> DataFrame:
     try:
-        logger.info(f"   🔍 Leyendo Silver Expuestos...")
+        logger.info("   🔍 Leyendo Silver Expuestos...")
         df_exp = spark.read.format("delta").load(f"{PATH_LAKE}/Silver/Expuestos")
         
         total_rows = df_exp.count()
         if total_rows == 0: 
-            logger.warning(f"   ⚠️ La tabla Silver Expuestos no contiene registros.")
+            logger.warning("   ⚠️ La tabla Silver Expuestos no contiene registros.")
             # raise Exception(f"La tabla Silver Expuestos no contiene registros.")
             return None
 
-        logger.info(f"   🔍 Leyendo Silver Contratantes...")
+        logger.info("   🔍 Leyendo Silver Contratantes...")
         df_cont = spark.read.format("delta").load(f"{PATH_LAKE}/Silver/Contratantes")
 
         total_rows = df_cont.count()
         if total_rows == 0: 
-            logger.warning(f"   ⚠️ La tabla Silver Contratantes no contiene registros.")
+            logger.warning("   ⚠️ La tabla Silver Contratantes no contiene registros.")
             return None
         
         df_exp = df_exp.alias("A")
@@ -577,7 +577,8 @@ if RUN_BRONZE:
                 logger.info(f"   Leyendo archivos Excel de SubCarpeta: {subfolder.parent.name}/{subfolder.name}...")
                 for excel_file in subfolder.glob("*.xlsx"):
                     df = ingest_excel_to_bronze(excel_file, COLS_IDX_EXP, COLS_NAM_EXP)
-                    if df: dfs_exp.append(df)
+                    if df: 
+                        dfs_exp.append(df)
         
         if dfs_exp:
             full_exp_raw: DataFrame = dfs_exp[0]
@@ -594,7 +595,8 @@ if RUN_BRONZE:
             if subfolder.is_dir():
                 for excel_file in subfolder.glob("*.xlsx"):
                     df = ingest_excel_to_bronze(excel_file, COLS_IDX_CONT, COLS_NAM_CONT)
-                    if df: dfs_cont.append(df)
+                    if df: 
+                        dfs_cont.append(df)
                     
         if dfs_cont:
             full_cont_raw: DataFrame = dfs_cont[0]
