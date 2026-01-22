@@ -17,7 +17,7 @@ from delta.tables import DeltaTable
 os.environ['PYSPARK_PYTHON'] = sys.executable
 os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
 
-TEMP_DIR = Path("E:/Spark_Temp") 
+TEMP_DIR = Path("E:/Spark_Temp_SCTR") 
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 HORA_INICIAL, HORA_FINAL = datetime.now(), datetime.now()
@@ -121,12 +121,10 @@ logger.info('Configurando entorno local...')
 
 spark = (
     SparkSession.builder 
-    .appName("ETL_Medallion_Emision")
+    .appName("ETL_Medallion_Emision_SCTR")
     .master("local[*]")
     .config("spark.driver.memory", "18g")
     .config("spark.local.dir", TEMP_DIR.as_posix())
-    #.config("spark.sql.ansi.enabled", "false")
-    # .config("spark.sql.parquet.compression.codec", "zstd")
     .config("spark.sql.adaptive.enabled", "true")
     .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
     .config("spark.sql.adaptive.advisoryPartitionSizeInBytes", "64m")
@@ -556,87 +554,91 @@ def process_gold_consolidation() -> DataFrame:
         logger.error(f"   ❌ Error en Consolidado Gold: {e}")
         raise e
 
-RUN_BRONZE = False
-RUN_SILVER = True   
-RUN_GOLD = False
+def main():
+    RUN_BRONZE = False
+    RUN_SILVER = True   
+    RUN_GOLD = False
 
-RUN_EXPUESTOS = True
-RUN_CONTRATANTES = True
+    RUN_EXPUESTOS = True
+    RUN_CONTRATANTES = True
 
-ON_DEMAND = False
+    ON_DEMAND = False
 
-if RUN_BRONZE:
-    logger.info("🟠 Iniciando Capa Bronze (Incremental)...")
+    if RUN_BRONZE:
+        logger.info("🟠 Iniciando Capa Bronze (Incremental)...")
 
-    if RUN_EXPUESTOS:
-        logger.info("   Procesando Expuestos...")
-        dfs_exp = []
+        if RUN_EXPUESTOS:
+            logger.info("   Procesando Expuestos...")
+            dfs_exp = []
 
-        for subfolder in PATH_SOURCE_EXP.iterdir():
-            if subfolder.is_dir():
-                logger.info(f"   Leyendo archivos Excel de SubCarpeta: {subfolder.parent.name}/{subfolder.name}...")
-                for excel_file in subfolder.glob("*.xlsx"):
-                    df = ingest_excel_to_bronze(excel_file, COLS_IDX_EXP, COLS_NAM_EXP)
-                    if df: 
-                        dfs_exp.append(df)
-        
-        if dfs_exp:
-            full_exp_raw: DataFrame = dfs_exp[0]
-            for d in dfs_exp[1:]:
-                full_exp_raw = full_exp_raw.unionAll(d)
+            for subfolder in PATH_SOURCE_EXP.iterdir():
+                if subfolder.is_dir():
+                    logger.info(f"   Leyendo archivos Excel de SubCarpeta: {subfolder.parent.name}/{subfolder.name}...")
+                    for excel_file in subfolder.glob("*.xlsx"):
+                        df = ingest_excel_to_bronze(excel_file, COLS_IDX_EXP, COLS_NAM_EXP)
+                        if df: 
+                            dfs_exp.append(df)
+            
+            if dfs_exp:
+                full_exp_raw: DataFrame = dfs_exp[0]
+                for d in dfs_exp[1:]:
+                    full_exp_raw = full_exp_raw.unionAll(d)
 
-            mode = "overwrite" if not validate_path_delta("Bronze", "Expuestos_Raw") else "append"
-            save_to_delta(full_exp_raw, "Bronze", "Expuestos_Raw", mode=mode)
+                mode = "overwrite" if not validate_path_delta("Bronze", "Expuestos_Raw") else "append"
+                save_to_delta(full_exp_raw, "Bronze", "Expuestos_Raw", mode=mode)
 
-    if RUN_CONTRATANTES:
-        logger.info("   Procesando Contratantes...")
-        dfs_cont = []
-        for subfolder in PATH_SOURCE_CONT.iterdir():
-            if subfolder.is_dir():
-                for excel_file in subfolder.glob("*.xlsx"):
-                    df = ingest_excel_to_bronze(excel_file, COLS_IDX_CONT, COLS_NAM_CONT)
-                    if df: 
-                        dfs_cont.append(df)
-                    
-        if dfs_cont:
-            full_cont_raw: DataFrame = dfs_cont[0]
-            for d in dfs_cont[1:]:
-                full_cont_raw = full_cont_raw.unionAll(d)
+        if RUN_CONTRATANTES:
+            logger.info("   Procesando Contratantes...")
+            dfs_cont = []
+            for subfolder in PATH_SOURCE_CONT.iterdir():
+                if subfolder.is_dir():
+                    for excel_file in subfolder.glob("*.xlsx"):
+                        df = ingest_excel_to_bronze(excel_file, COLS_IDX_CONT, COLS_NAM_CONT)
+                        if df: 
+                            dfs_cont.append(df)
+                        
+            if dfs_cont:
+                full_cont_raw: DataFrame = dfs_cont[0]
+                for d in dfs_cont[1:]:
+                    full_cont_raw = full_cont_raw.unionAll(d)
 
-            mode = "overwrite" if not validate_path_delta("Bronze", "Contratantes_Raw") else "append"
-            save_to_delta(full_cont_raw, "Bronze", "Contratantes_Raw", mode=mode)
+                mode = "overwrite" if not validate_path_delta("Bronze", "Contratantes_Raw") else "append"
+                save_to_delta(full_cont_raw, "Bronze", "Contratantes_Raw", mode=mode)
 
-if RUN_SILVER:
-    logger.info("⚪ Iniciando Capa Silver (Incremental)...")
+    if RUN_SILVER:
+        logger.info("⚪ Iniciando Capa Silver (Incremental)...")
 
-    if RUN_EXPUESTOS:
-        if ON_DEMAND:
-            df_exp_silver = transform_expuestos_silver(datetime.strptime("2025-12-28","%Y-%m-%d").date(), False)
-        else:
-            df_exp_silver = transform_expuestos_silver()
+        if RUN_EXPUESTOS:
+            if ON_DEMAND:
+                df_exp_silver = transform_expuestos_silver(datetime.strptime("2025-12-28","%Y-%m-%d").date(), False)
+            else:
+                df_exp_silver = transform_expuestos_silver()
 
-        keys_exp = ['POLIZA', 'CERTIFICADO', 'NUM_DOC', 'YEAR_MOV', 'MONTH_MOV'] 
-        process_silver(df_exp_silver, "Expuestos", keys_exp)
+            keys_exp = ['POLIZA', 'CERTIFICADO', 'NUM_DOC', 'YEAR_MOV', 'MONTH_MOV'] 
+            process_silver(df_exp_silver, "Expuestos", keys_exp)
 
-    if RUN_CONTRATANTES:
-        if ON_DEMAND:
-            df_cont_silver = transform_contratantes_silver(datetime.strptime("2025-12-28","%Y-%m-%d").date(), False)
-        else:
-            df_cont_silver = transform_contratantes_silver()
+        if RUN_CONTRATANTES:
+            if ON_DEMAND:
+                df_cont_silver = transform_contratantes_silver(datetime.strptime("2025-12-28","%Y-%m-%d").date(), False)
+            else:
+                df_cont_silver = transform_contratantes_silver()
 
-        keys_cont = ['POLIZA', 'NUM_DOC_CONT', 'YEAR_MOV', 'MONTH_MOV']
-        process_silver(df_cont_silver, "Contratantes", keys_cont)
+            keys_cont = ['POLIZA', 'NUM_DOC_CONT', 'YEAR_MOV', 'MONTH_MOV']
+            process_silver(df_cont_silver, "Contratantes", keys_cont)
 
-if RUN_GOLD:
-    logger.info("🟡 Iniciando Capa Gold...")
-    df_exp_gold = process_gold_consolidation()
-    save_to_parquet(df_exp_gold, "Gold", "Consolidado_PowerBI_PySpark.parquet")
+    if RUN_GOLD:
+        logger.info("🟡 Iniciando Capa Gold...")
+        df_exp_gold = process_gold_consolidation()
+        save_to_parquet(df_exp_gold, "Gold", "Consolidado_PowerBI_PySpark.parquet")
 
-HORA_FINAL = datetime.now()
-logger.success('✅ Ejecución exitosa: Se procesó la información.')
-difference_time = HORA_FINAL-HORA_INICIAL
-total_seconds = int(difference_time.total_seconds())
-difference_formated = "{} minuto(s), {} segundo(s)".format((total_seconds // 60), total_seconds % 60)
-logger.info(f"Tiempo de proceso: {difference_formated}")
-TEMP_DIR.unlink(missing_ok=True)
-sys.exit(0)
+    HORA_FINAL = datetime.now()
+    logger.success('✅ Ejecución exitosa: Se procesó la información.')
+    difference_time = HORA_FINAL-HORA_INICIAL
+    total_seconds = int(difference_time.total_seconds())
+    difference_formated = "{} minuto(s), {} segundo(s)".format((total_seconds // 60), total_seconds % 60)
+    logger.info(f"Tiempo de proceso: {difference_formated}")
+    TEMP_DIR.unlink(missing_ok=True)
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
