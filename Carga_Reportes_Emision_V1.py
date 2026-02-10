@@ -1,4 +1,3 @@
-# from urllib.parse import quote_plus
 from pathlib import Path
 from loguru import logger
 from rich import print
@@ -7,21 +6,10 @@ from rich.panel import Panel
 from rich.prompt import IntPrompt
 from rich.text import Text
 import fastexcel
-from xlsxwriter import Workbook
-# from sqlalchemy import create_engine
-# from sqlalchemy.sql import text
 from contextlib import suppress
-# from openpyxl import load_workbook
 import polars as pl
 import datetime
-# from datetime import date
-# import chardet
-# from charset_normalizer import from_bytes
-# from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 import os, sys, shutil, tempfile
-
-# pyinstaller --noconfirm --onefile Carga_Reportes_Emision_BK.py --icon "Recursos/logo.ico"
-# --hidden-import pyarrow.vendored.version
 
 # uv run pyinstaller --noconfirm --onefile --strip --icon "Recursos/logo.ico" --hidden-import fastexcel Carga_Reportes_Emision_V3.py 
 # uv run pyinstaller --noconfirm --onedir --noupx --strip --icon "Recursos/logo.ico" --hidden-import fastexcel Carga_Reportes_Emision_V3.py 
@@ -30,46 +18,29 @@ import os, sys, shutil, tempfile
 HORA_INICIAL, HORA_FINAL = datetime.datetime.now(), datetime.datetime.now()
 PERIODO = str(HORA_INICIAL.year) + str(HORA_INICIAL.month).zfill(2) + str(HORA_INICIAL.day).zfill(2)
 if getattr(sys, 'frozen', False): 
-    PATH_GENERAL = Path(sys.executable).resolve().parent  #sys.argv[1]
+    PATH_GENERAL = Path(sys.executable).resolve().parent
 else:
-    PATH_GENERAL = Path(__file__).resolve().parent  #sys.argv[1]
+    PATH_GENERAL = Path(__file__).resolve().parent
 PATH_SOURCE_EXP = PATH_GENERAL / 'Reportes_Expuestos' 
 PATH_SOURCE_CONT = PATH_GENERAL / 'Reportes_Contratantes' 
-# PATH_DESTINATION =  Path(r'\\nt_nas\cobra001\Area-Cobranza-Automatizacion\MACRO_PA\EMISION\Consolidado de Polizas AP-Vida\Data') #sys.argv[2]
 PATH_DESTINATION =  PATH_GENERAL / 'Consolidados'
-# PATH_LOG = PATH_GENERAL / 'LogApp_{time:YYYYMMDD}.log'
 PATH_LOG = PATH_GENERAL / 'Logs' / f'LogApp_{PERIODO}.log'
 FILE_LOG_EXISTS = False
 REPORT_NAME_EXP = f'Consolidado_Emision_Expuestos_{PERIODO}.parquet' 
 REPORT_NAME_CONT = f'Consolidado_Emision_Contratantes_{PERIODO}.parquet' 
 REPORT_NAME_FINAL = f'Consolidado_Emision_Final_{PERIODO}.parquet'
 FILES_TEMP_REMOVE = []
-# Código de Fila	    Póliza	    Fecha de Inicio de Vigencia de Póliza	
-# Fecha de Fin de Vigencia de Póliza	    Moneda	    Certificado	
-# Fecha Inicio de Cobertura	    Fecha Fin de Cobertura	
-# Primer Nombre	    Segundo Nombre	    Apellido Paterno	Apellido Materno	
-# Tipo Documento de Identidad	    Numero de Documento	    Sexo	
-# Fecha de Nacimiento	    Tipo de Contrato	    Actividad Económica	
-# Año del Movimiento	    Mes del Movimiento
-COLUMNS_INDEX_EXP = [1,2,3,5,6,7,8,9,10,11,12,13,18,19] #18,19
+COLUMNS_INDEX_EXP = [1,2,3,5,6,7,8,9,10,11,12,13,18,19] 
 COLUMNS_EXP = ['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
                 'CERTIFICADO','F_INI_COBERT','F_FIN_COBERT',
-                'P_NOMBRE','S_NOMBRE','AP_PATERNO','AP_MATERNO','TIPO_DOC','NUM_DOC','YEAR_MOV','MONTH_MOV'] #'YEAR_MOV','MONTH_MOV'
+                'P_NOMBRE','S_NOMBRE','AP_PATERNO','AP_MATERNO','TIPO_DOC','NUM_DOC','YEAR_MOV','MONTH_MOV']
 COLUMNS_EXP_FINAL = ['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
                 'CERTIFICADO','F_INI_COBERT','F_FIN_COBERT',
                 'TIPO_DOC','NUM_DOC','ULT_DIGI_DOC','EXPUESTO','YEAR_MOV','MONTH_MOV','FECHA_REGISTRO']
-# DROP_COLUMNS_EXP = [0,4,14,15,16,17]
 COLUMNS_DATE_EXP = ['F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA','F_INI_COBERT','F_FIN_COBERT']
-# Código de Fila	    Tipo de Documento	    Numero Documento	
-# Razon Social o Nombres y Apellidos	    Actividad Economica	
-# Domicilio Fiscal del Contratante	Identificador Unico de Poliza	
-# Numero de Personas Aseguradas en la Poliza	    Año del Movimiento	    Mes del Movimiento
 COLUMNS_INDEX_CONT = [1,2,3,6,8,9]
 COLUMNS_CONT = ['TIPO_DOC','NUM_DOC_CONT','CONTRATANTE','POLIZA','YEAR_MOV','MONTH_MOV']
 COLUMNS_CONT_FINAL = ['POLIZA','TIPO_DOC','NUM_DOC_CONT','CONTRATANTE','YEAR_MOV','MONTH_MOV','FECHA_REGISTRO']
-COLUMNS_FINAL = ['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
-                'F_INI_COBERT','F_FIN_COBERT','NUM_DOC_CONT','CONTRATANTE','CERTIFICADO',
-                'TIPO_DOC','NUM_DOC','EXPUESTO'] #,'YEAR_MOV','MONTH_MOV'
 COLUMNS_INTEGER = ['POLIZA','TIPO_DOC','YEAR_MOV','MONTH_MOV']
 FORMATS_DATE = ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d",
                 "%Y%m%d", "%d/%m/%y", "%d-%m-%y", "%y/%m/%d", "%y-%m-%d"]
@@ -163,39 +134,6 @@ def start_log(exits_log: bool = False):
     add_log_console()
     add_log_file(exits_log)
 
-def export_lf_excel(lf: pl.LazyFrame, path_file: str, sheet_name: str):
-    n_rows = lf.select(pl.len()).collect(engine='streaming').item()
-    chunk_size = 900_000
-
-    with Workbook(path_file) as wb:
-        if n_rows <= chunk_size:
-            lf.collect(engine='streaming').write_excel(
-                    workbook=wb,
-                    worksheet=sheet_name,
-                    position='A1',
-                    table_style='Table Style Light 14',
-                    table_name=f'Tabla_{sheet_name}',
-                    dtype_formats={pl.Date: 'dd/mm/yyyy', pl.Int64: '0'},
-                    float_precision=2,
-                    autofit=True
-            )
-        else:
-            x = 1
-            for i in range(0,n_rows,chunk_size):
-                sheet_name_new = f'{sheet_name}_{x}'
-                df = lf[i:i + chunk_size].collect(engine='streaming') #lf.slice(i, min(i + chunk_size, n_rows) - i).collect(engine='streaming')
-                df.write_excel(
-                        workbook=wb,
-                        worksheet=sheet_name_new,
-                        position='A1',
-                        table_style='Table Style Light 14',
-                        table_name=f'Tabla_{sheet_name_new}',
-                        dtype_formats={pl.Date: 'dd/mm/yyyy', pl.Int64: '0'},
-                        float_precision=2,
-                        autofit=True
-                )
-                x+=1
-
 class MenuPrompt(IntPrompt):
     validate_error_message = "[red]⛔ Error:[/red] Por favor ingrese un número válido."
     
@@ -227,9 +165,6 @@ class Process_ETL:
             reader = fastexcel.read_excel(excel_path)
             dtypes_map = {idx: "string" for idx in columns_index_original}
 
-            # year_val = (excel_path.name).split('_')[0]
-            # month_val = (excel_path.name).split('_')[1]
-
             for name in reader.sheet_names:
                 try:
                     sheet = reader.load_sheet_by_name(name,use_columns=columns_index_original,dtypes=dtypes_map)
@@ -237,8 +172,7 @@ class Process_ETL:
                 except Exception:
                     logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}")
                     continue
-                # q = q.select(pl.all().gather(columns_index_original))
-                
+
                 columns_originales = q.collect_schema().names()
 
                 if len(columns_originales) != len(columns_names_new):
@@ -253,24 +187,6 @@ class Process_ETL:
                     ])
                     .rename(mapping)
                     .with_columns(pl.lit(excel_path.name).alias('FILE_SOURCE'))
-                    # .with_columns(pl.lit(year_val).alias('YEAR_MOV'))
-                    # .with_columns(pl.lit(month_val).alias('MONTH_MOV'))
-                    # .with_columns([
-                    #     pl.col('FILE_SOURCE').str.split('_').list.get(0).alias('YEAR_MOV'),
-                    #     pl.col('FILE_SOURCE').str.split('_').list.get(1).alias('MONTH_MOV')
-                    # ])
-                    # .with_columns([
-                    #     pl.col('FILE_SOURCE').str.extract(r"^(\d{4})", 1).alias('YEAR_MOV'),
-                    #     pl.col('FILE_SOURCE').str.extract(r"^\d{4}_(\d{2})", 1).alias('MONTH_MOV')
-                    # ])
-                    # .with_columns(
-                    #     pl.col('FILE_SOURCE')
-                    #     .str.split_exact('_', 2)
-                    #     .struct.rename_fields(['YEAR_MOV', 'MONTH_MOV', 'RESTO'])
-                    #     .alias('fields')
-                    # )
-                    # .unnest('fields')
-                    # .drop('RESTO')
                 )
                     
                 lf_final.append(q)
@@ -288,10 +204,7 @@ class Process_ETL:
             lf
             .with_columns(pl.col('NUM_DOC').str.replace_all(r"['\"_]", "", literal=False).alias('NUM_DOC'))
             .with_columns(pl.col('NUM_DOC').str.slice(-1).cast(pl.Int8, strict=False).alias('ULT_DIGI_DOC'))
-            # .with_columns(pl.col('POLIZA').cast(pl.Float64).cast(pl.Int64))
-            # .with_columns(pl.col('TIPO_DOC').cast(pl.Float32).cast(pl.Int32))
             .with_columns(pl.col(COLUMNS_INTEGER).cast(pl.Float64, strict=False).cast(pl.Int64))
-            # .filter( ~(pl.col('TIPO_DOC').is_null()) ) 
             .with_columns(
                 pl.concat_str(
                     [
@@ -323,14 +236,12 @@ class Process_ETL:
                 .otherwise(pl.col('NUM_DOC'))
                 .alias('NUM_DOC')
             )
-            # .filter(pl.all_horizontal(pl.col(['POLIZA', 'YEAR_MOV', 'MONTH_MOV']).is_not_null()))
-            # .filter(pl.any_horizontal(pl.col(['POLIZA', 'YEAR_MOV', 'MONTH_MOV']).is_null()))
         )
         
         NUM_ROWS = int(q.select(pl.len()).collect(engine='streaming').item())
         logger.info(f"Transformando datos de subcarpeta '{subfolder_path.name}'...")
 
-        errores_poliza = q.filter(pl.col('POLIZA').is_null()).select(['FILE_SOURCE']).collect()
+        errores_poliza = q.filter(pl.col('POLIZA').is_null()).select(['FILE_SOURCE']).unique(['FILE_SOURCE']).collect()
 
         if errores_poliza.height > 0:
             archivos_afectados = errores_poliza.get_column('FILE_SOURCE').unique().to_list()
@@ -359,7 +270,7 @@ class Process_ETL:
                 .with_columns(
                     pl.col(COLUMNS_DATE_EXP)
                     .str.slice(0, 10)
-                    .str.to_date(strict=True) #.str.strptime(pl.Date).cast(pl.Date)) 
+                    .str.to_date(strict=True)
                 )
             )
 
@@ -388,7 +299,6 @@ class Process_ETL:
             lf
             .with_columns(pl.col('NUM_DOC_CONT').str.replace_all(r"['\"_]", "", literal=False).alias('NUM_DOC_CONT'))
             .with_columns(pl.col(COLUMNS_INTEGER).cast(pl.Float64, strict=False).cast(pl.Int64))
-            # .with_columns(pl.col('TIPO_DOC').cast(pl.Float32).cast(pl.Int32))
             .with_columns(
                 pl.when(pl.col('TIPO_DOC') == 1)
                 .then(pl.lit('DNI'))
@@ -407,13 +317,11 @@ class Process_ETL:
                 .otherwise(pl.col('NUM_DOC_CONT'))
                 .alias('NUM_DOC_CONT')
             )
-            # .filter(pl.any_horizontal(pl.col(['POLIZA', 'CONTRATANTE', 'YEAR_MOV', 'MONTH_MOV']).is_null()))
-            .drop_nulls(subset=['POLIZA', 'CONTRATANTE', 'YEAR_MOV', 'MONTH_MOV']) 
         )
         
         logger.info(f"Transformando datos de subcarpeta '{subfolder_path.name}'...")
 
-        errores_poliza = q.filter(pl.col('POLIZA').is_null()).select(['FILE_SOURCE']).collect()
+        errores_poliza = q.filter(pl.col('POLIZA').is_null()).select(['FILE_SOURCE']).unique(['FILE_SOURCE']).collect()
 
         if errores_poliza.height > 0:
             archivos_afectados = errores_poliza.get_column('FILE_SOURCE').unique().to_list()
@@ -442,19 +350,10 @@ class Process_ETL:
 
         q: pl.LazyFrame = lf
         logger.info(f"Total Registros: {q.select(pl.len()).collect(engine='streaming').item()}")
-        # list_df.clear()
         
         logger.info(q.collect_schema())
-        # columns = ['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
-        #         'F_INI_COBERT','F_FIN_COBERT','TIPO_DOC','NUM_DOC','EXPUESTO']
-        # print(f"Total de Registros : {q.select(pl.len()).collect(engine='streaming').item()}")
-        if process_name == 'Expuestos':
-            # print(q.select(['POLIZA','TIPO_DOC','NUM_DOC','ULT_DIGI_DOC','EXPUESTO']).limit(20).collect().head(20))
-            # sys.exit(0)
-            pass          
-        elif process_name == 'Contratantes':
-            # print(q.select(COLUMNS_CONT_FINAL).limit(20).collect().head(20))
 
+        if process_name == 'Contratantes':
             self.lf_dev = (
                 q
                 .unique(['POLIZA','TIPO_DOC','NUM_DOC_CONT'])
@@ -462,26 +361,6 @@ class Process_ETL:
                 .sort(['POLIZA'])
             )
             logger.info(f"Total Registros Duplicados: {self.lf_dev.select(pl.len()).collect(engine='streaming').item()}")
-            # self.lf_dev = (
-            #     self.lf_dev
-            #     .select(['POLIZA','TIPO_DOC','NUM_DOC_CONT','CONTRATANTE','YEAR_MOV','MONTH_MOV'])
-            # )
-            # # print(self.lf_dev.limit(20).collect().head(20))
-            # export_lf_excel(
-            #     self.lf_dev,
-            #     PATH_DESTINATION / f'Consolidado_Emision_Duplicados_{PERIODO}.xlsx',
-            #     'Duplicados_Polizas'
-            # )
-        # tipos_doc = q.select(['TIPO_DOC']).unique().collect().to_series().to_list()
-        # print(tipos_doc)
-        # print(q
-        #       .select(columns)
-        #       .filter(pl.col('TIPO_DOC').is_in([2]))
-        #       .limit(20)
-        #       .collect(engine='streaming')
-        #       .head(20)
-        # )
-        # q = None
 
         logger.info(f'Verificando si existe consolidado {process_name}...')
         FILES_TEMP_REMOVE.append(path_prev)
@@ -558,7 +437,6 @@ class Process_ETL:
                     raise Exception(f"No se encontraron subcarpetas en la carpeta principal.\nUbicación Carpeta Core: {PATH_SOURCE_EXP}")
                 
                 lf_final_list_exp = pl.concat(processing_subfolders('Expuestos',subfolders_list))
-                # print(lf_final_list)
 
                 logger.info('Consolidando información Expuestos...')
                 self.Export_Final_Report('Expuestos', lf_final_list_exp, REPORT_NAME_EXP)
@@ -571,37 +449,12 @@ class Process_ETL:
                     raise Exception(f"No se encontraron subcarpetas en la carpeta principal.\nUbicación Carpeta Core: {PATH_SOURCE_CONT}")
                 
                 lf_final_list_cont = pl.concat(processing_subfolders('Contratantes',subfolders_list))
-                # print(lf_final_list)
 
                 logger.info('Consolidando información Contratantes...')
                 self.Export_Final_Report('Contratantes', lf_final_list_cont, REPORT_NAME_CONT)
             
-            logger.info('Generando Reporte_BI Final...')
-            lf_final = (
-                lf_final_list_exp
-                .join(lf_final_list_cont, on=['POLIZA'], how='left') #, validate='m:1' 'YEAR_MOV','MONTH_MOV'
-                # .select(COLUMNS_FINAL)
-                # .join(self.lf_dev, on=['POLIZA','NUM_DOC_CONT'], how='inner')
-                .unique(COLUMNS_FINAL)
-                .select(COLUMNS_FINAL)
-                # .limit(1_500_000)
-                # .filter(pl.col('CONTRATANTE').is_null())
-                # .sort(['ULT_DIGI_DOC', 'NUM_DOC'])
-            )
-
-            # print(lf_final.select(pl.len()).collect().item())
-            # print(lf_final.limit(20).collect().head(20))
-            logger.info('Exportando a Excel Reporte_BI Final...')
-            export_lf_excel(
-                lf_final,
-                PATH_DESTINATION / f'Consolidado_Emision_Final_{PERIODO}.xlsx',
-                'Reporte_BI'
-            )
-            self.Export_Final_Report('Reporte_BI', lf_final, REPORT_NAME_FINAL)
-
             lf_final_list_exp.clear()
             lf_final_list_cont.clear()
-            lf_final.clear()
 
             ERROR_MSG = None
             PROCESS_STATUS = 0
