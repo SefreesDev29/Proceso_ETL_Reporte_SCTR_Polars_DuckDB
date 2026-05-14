@@ -230,8 +230,8 @@ def ingest_excel_to_bronze(file_path: Path, col_indices: list, col_names: list) 
         pdf_list = []
         dtype_map = {idx: "string" for idx in col_indices}
 
-        # year_val = (excel_path.name).split('_')[0]
-        # month_val = (excel_path.name).split('_')[1]
+        # year_val = (file_path.name).split('_')[0]
+        # month_val = (file_path.name).split('_')[1]
 
         for sheet_name in excel_reader.sheet_names:
             try:
@@ -363,7 +363,7 @@ def transform_expuestos_silver(periodo = PERIODO, get_only_bronze : bool = False
                 F.translate(F.col("NUM_DOC"), "'\"_", "") 
             )
             .withColumn("ULT_DIGI_DOC", F.expr("try_cast(substring(NUM_DOC, -1, 1) as INT)"))
-            .withColumn("POLIZA", F.col("POLIZA").cast(DecimalType(scale=2)).cast(LongType()))
+            .withColumn("POLIZA", F.col("POLIZA").cast(DecimalType(precision=20, scale=2)).cast(LongType()))
             .withColumn("YEAR_MOV", F.col("YEAR_MOV").cast(DecimalType(scale=2)).cast(IntegerType())) 
             .withColumn("MONTH_MOV", F.col("MONTH_MOV").cast(DecimalType(scale=2)).cast(IntegerType())) 
             .withColumn("TIPO_DOC_RAW", F.col("TIPO_DOC").cast(DecimalType(scale=2)).cast(IntegerType())) 
@@ -446,7 +446,7 @@ def transform_contratantes_silver(periodo = PERIODO, get_only_bronze : bool = Fa
             .withColumn("NUM_DOC_CONT", 
                 F.translate(F.col("NUM_DOC_CONT"), "'\"_", "") 
             )
-            .withColumn("POLIZA", F.col("POLIZA").cast(DecimalType(scale=2)).cast(LongType())) \
+            .withColumn("POLIZA", F.col("POLIZA").cast(DecimalType(precision=20, scale=2)).cast(LongType())) \
             .withColumn("YEAR_MOV", F.col("YEAR_MOV").cast(DecimalType(scale=2)).cast(IntegerType())) 
             .withColumn("MONTH_MOV", F.col("MONTH_MOV").cast(DecimalType(scale=2)).cast(IntegerType())) 
             .withColumn("TIPO_DOC_RAW", F.col("TIPO_DOC").cast(DecimalType(scale=2)).cast(IntegerType())) 
@@ -580,9 +580,9 @@ def process_gold_consolidation() -> DataFrame:
 def main():
     RUN_BRONZE = True
     RUN_SILVER = True   
-    RUN_GOLD = True
+    RUN_GOLD = False
 
-    RUN_EXPUESTOS = True
+    RUN_EXPUESTOS = False
     RUN_CONTRATANTES = True
 
     ON_DEMAND = False

@@ -51,10 +51,10 @@ FILES_TEMP_REMOVE = []
 # Tipo Documento de Identidad	    Numero de Documento	    Sexo	
 # Fecha de Nacimiento	    Tipo de Contrato	    Actividad Económica	
 # Año del Movimiento	    Mes del Movimiento
-COLUMNS_INDEX_EXP = [1,2,3,5,6,7,8,9,10,11,12,13,18,19] #18,19
+COLUMNS_INDEX_EXP = [1,2,3,5,6,7,8,9,10,11,12,13] #18,19
 COLUMNS_EXP = ['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
                 'CERTIFICADO','F_INI_COBERT','F_FIN_COBERT',
-                'P_NOMBRE','S_NOMBRE','AP_PATERNO','AP_MATERNO','TIPO_DOC','NUM_DOC','YEAR_MOV','MONTH_MOV'] #'YEAR_MOV','MONTH_MOV'
+                'P_NOMBRE','S_NOMBRE','AP_PATERNO','AP_MATERNO','TIPO_DOC','NUM_DOC'] #'YEAR_MOV','MONTH_MOV'
 COLUMNS_EXP_FINAL = ['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
                 'CERTIFICADO','F_INI_COBERT','F_FIN_COBERT',
                 'TIPO_DOC','NUM_DOC','ULT_DIGI_DOC','EXPUESTO','YEAR_MOV','MONTH_MOV','FECHA_REGISTRO']
@@ -64,8 +64,8 @@ COLUMNS_DATE_EXP = ['F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA','F_INI_COBERT','F_
 # Razon Social o Nombres y Apellidos	    Actividad Economica	
 # Domicilio Fiscal del Contratante	Identificador Unico de Poliza	
 # Numero de Personas Aseguradas en la Poliza	    Año del Movimiento	    Mes del Movimiento
-COLUMNS_INDEX_CONT = [1,2,3,6,8,9]
-COLUMNS_CONT = ['TIPO_DOC','NUM_DOC_CONT','CONTRATANTE','POLIZA','YEAR_MOV','MONTH_MOV']
+COLUMNS_INDEX_CONT = [1,2,3,6] #,8,9
+COLUMNS_CONT = ['TIPO_DOC','NUM_DOC_CONT','CONTRATANTE','POLIZA'] #,'YEAR_MOV','MONTH_MOV'
 COLUMNS_CONT_FINAL = ['POLIZA','TIPO_DOC','NUM_DOC_CONT','CONTRATANTE','YEAR_MOV','MONTH_MOV','FECHA_REGISTRO']
 COLUMNS_FINAL = ['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
                 'F_INI_COBERT','F_FIN_COBERT','NUM_DOC_CONT','CONTRATANTE','CERTIFICADO',
@@ -227,15 +227,12 @@ class Process_ETL:
             reader = fastexcel.read_excel(excel_path)
             dtypes_map = {idx: "string" for idx in columns_index_original}
 
-            # year_val = (excel_path.name).split('_')[0]
-            # month_val = (excel_path.name).split('_')[1]
-
             for name in reader.sheet_names:
                 try:
                     sheet = reader.load_sheet_by_name(name,use_columns=columns_index_original,dtypes=dtypes_map)
                     q = sheet.to_polars().lazy()
-                except Exception:
-                    logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}")
+                except Exception as e:
+                    logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}.\nError: {e}")
                     continue
                 # q = q.select(pl.all().gather(columns_index_original))
                 
@@ -245,6 +242,9 @@ class Process_ETL:
                     raise ValueError(f"Cantidad de columnas incorrecta. Permitido: {len(columns_names_new)}")
                 
                 mapping = dict(zip(columns_originales, columns_names_new))
+
+                # year_val = (excel_path.name).split('_')[0]
+                # month_val = (excel_path.name).split('_')[1]
 
                 q = (
                     q
@@ -286,6 +286,8 @@ class Process_ETL:
 
         q = (
             lf
+            .with_columns(pl.lit(None).alias('YEAR_MOV'))
+            .with_columns(pl.lit(None).alias('MONTH_MOV'))
             .with_columns(pl.col('NUM_DOC').str.replace_all(r"['\"_]", "", literal=False).alias('NUM_DOC'))
             .with_columns(pl.col('NUM_DOC').str.slice(-1).cast(pl.Int8, strict=False).alias('ULT_DIGI_DOC'))
             # .with_columns(pl.col('POLIZA').cast(pl.Float64).cast(pl.Int64))
@@ -311,6 +313,8 @@ class Process_ETL:
                 .then(pl.lit('CE'))
                 .when(pl.col('TIPO_DOC') == 5)
                 .then(pl.lit('PAS'))
+                .when(pl.col('TIPO_DOC').is_null())
+                .then(pl.lit(None))
                 .otherwise(pl.lit('OTROS'))
                 .alias('TIPO_DOC')
             )
@@ -323,8 +327,13 @@ class Process_ETL:
                 .otherwise(pl.col('NUM_DOC'))
                 .alias('NUM_DOC')
             )
-            # .filter(pl.all_horizontal(pl.col(['POLIZA', 'YEAR_MOV', 'MONTH_MOV']).is_not_null()))
+            # .filter(pl.all_horizontal(pl.col(['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
+            #                                    'CERTIFICADO','TIPO_DOC','NUM_DOC']).is_not_null()))
+            # .filter(~pl.all_horizontal(pl.col(['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
+            #                                    'CERTIFICADO','TIPO_DOC','NUM_DOC']).is_null()))
             # .filter(pl.any_horizontal(pl.col(['POLIZA', 'YEAR_MOV', 'MONTH_MOV']).is_null()))
+            .filter(pl.any_horizontal(pl.col(['POLIZA','F_INI_VIGEN_POLIZA','F_FIN_VIGEN_POLIZA',
+                        'CERTIFICADO','TIPO_DOC','NUM_DOC']).is_not_null()))
         )
         
         NUM_ROWS = int(q.select(pl.len()).collect(engine='streaming').item())
@@ -372,7 +381,7 @@ class Process_ETL:
 
         q = (
             q
-            .drop_nulls(subset=['POLIZA', 'YEAR_MOV', 'MONTH_MOV'])
+            .drop_nulls(subset=['POLIZA']) #, 'YEAR_MOV', 'MONTH_MOV'
             .with_columns(pl.lit(datetime.date.today()).cast(pl.Date).alias('FECHA_REGISTRO'))
             .unique(COLUMNS_EXP)
             .select(COLUMNS_EXP_FINAL)
@@ -386,6 +395,8 @@ class Process_ETL:
     def Transform_Dataframe_Contratantes(self, lf: pl.LazyFrame, subfolder_path: Path) -> pl.LazyFrame:
         q = (
             lf
+            .with_columns(pl.lit(None).alias('YEAR_MOV'))
+            .with_columns(pl.lit(None).alias('MONTH_MOV'))
             .with_columns(pl.col('NUM_DOC_CONT').str.replace_all(r"['\"_]", "", literal=False).alias('NUM_DOC_CONT'))
             .with_columns(pl.col(COLUMNS_INTEGER).cast(pl.Float64, strict=False).cast(pl.Int64))
             # .with_columns(pl.col('TIPO_DOC').cast(pl.Float32).cast(pl.Int32))
@@ -394,6 +405,8 @@ class Process_ETL:
                 .then(pl.lit('DNI'))
                 .when(pl.col('TIPO_DOC') == 6)
                 .then(pl.lit('RUC'))
+                .when(pl.col('TIPO_DOC').is_null())
+                .then(pl.lit(None))
                 .otherwise(pl.lit('OTRO'))
                 .alias('TIPO_DOC')
             )
@@ -408,7 +421,9 @@ class Process_ETL:
                 .alias('NUM_DOC_CONT')
             )
             # .filter(pl.any_horizontal(pl.col(['POLIZA', 'CONTRATANTE', 'YEAR_MOV', 'MONTH_MOV']).is_null()))
-            .drop_nulls(subset=['POLIZA', 'CONTRATANTE', 'YEAR_MOV', 'MONTH_MOV']) 
+            # .drop_nulls(subset=['POLIZA', 'CONTRATANTE', 'YEAR_MOV', 'MONTH_MOV']) 
+            # .filter(~pl.all_horizontal(pl.col(['POLIZA','TIPO_DOC','NUM_DOC_CONT','CONTRATANTE']).is_null()))
+            .filter(pl.any_horizontal(pl.col(['POLIZA','TIPO_DOC','NUM_DOC_CONT','CONTRATANTE']).is_not_null()))
         )
         
         logger.info(f"Transformando datos de subcarpeta '{subfolder_path.name}'...")
@@ -426,7 +441,7 @@ class Process_ETL:
 
         q = (
             q
-            .drop_nulls(subset=['POLIZA', 'CONTRATANTE', 'YEAR_MOV', 'MONTH_MOV']) 
+            .drop_nulls(subset=['POLIZA', 'CONTRATANTE']) #, 'YEAR_MOV', 'MONTH_MOV'
             .with_columns(pl.lit(datetime.date.today()).cast(pl.Date).alias('FECHA_REGISTRO'))
             .unique(COLUMNS_CONT)
             .select(COLUMNS_CONT_FINAL)
@@ -576,32 +591,32 @@ class Process_ETL:
                 logger.info('Consolidando información Contratantes...')
                 self.Export_Final_Report('Contratantes', lf_final_list_cont, REPORT_NAME_CONT)
             
-            logger.info('Generando Reporte_BI Final...')
-            lf_final = (
-                lf_final_list_exp
-                .join(lf_final_list_cont, on=['POLIZA'], how='left') #, validate='m:1' 'YEAR_MOV','MONTH_MOV'
-                # .select(COLUMNS_FINAL)
-                # .join(self.lf_dev, on=['POLIZA','NUM_DOC_CONT'], how='inner')
-                .unique(COLUMNS_FINAL)
-                .select(COLUMNS_FINAL)
-                # .limit(1_500_000)
-                # .filter(pl.col('CONTRATANTE').is_null())
-                # .sort(['ULT_DIGI_DOC', 'NUM_DOC'])
-            )
+            # logger.info('Generando Reporte_BI Final...')
+            # lf_final = (
+            #     lf_final_list_exp
+            #     .join(lf_final_list_cont, on=['POLIZA'], how='left') #, validate='m:1' 'YEAR_MOV','MONTH_MOV'
+            #     # .select(COLUMNS_FINAL)
+            #     # .join(self.lf_dev, on=['POLIZA','NUM_DOC_CONT'], how='inner')
+            #     .unique(COLUMNS_FINAL)
+            #     .select(COLUMNS_FINAL)
+            #     # .limit(1_500_000)
+            #     # .filter(pl.col('CONTRATANTE').is_null())
+            #     # .sort(['ULT_DIGI_DOC', 'NUM_DOC'])
+            # )
 
-            # print(lf_final.select(pl.len()).collect().item())
-            # print(lf_final.limit(20).collect().head(20))
-            logger.info('Exportando a Excel Reporte_BI Final...')
-            export_lf_excel(
-                lf_final,
-                PATH_DESTINATION / f'Consolidado_Emision_Final_{PERIODO}.xlsx',
-                'Reporte_BI'
-            )
-            self.Export_Final_Report('Reporte_BI', lf_final, REPORT_NAME_FINAL)
+            # # print(lf_final.select(pl.len()).collect().item())
+            # # print(lf_final.limit(20).collect().head(20))
+            # logger.info('Exportando a Excel Reporte_BI Final...')
+            # export_lf_excel(
+            #     lf_final,
+            #     PATH_DESTINATION / f'Consolidado_Emision_Final_{PERIODO}.xlsx',
+            #     'Reporte_BI'
+            # )
+            # self.Export_Final_Report('Reporte_BI', lf_final, REPORT_NAME_FINAL)
 
             lf_final_list_exp.clear()
             lf_final_list_cont.clear()
-            lf_final.clear()
+            # lf_final.clear()
 
             ERROR_MSG = None
             PROCESS_STATUS = 0
